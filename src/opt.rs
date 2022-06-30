@@ -1,4 +1,4 @@
-use crate::sizes::Length;
+use crate::sizes::KicadDim;
 use clap::Parser;
 use std::path::PathBuf;
 
@@ -16,7 +16,7 @@ pub struct Args {
     #[clap(short = 'o', long = "output")]
     pub output: Option<PathBuf>,
 
-    /// Size of one pixel in the output footprint (e.g. 1.27mm or 0.001in)
+    /// Size of one pixel in the output footprint (e.g. 1.27mm or 0.05in)
     #[clap(short = 'p', long = "pixel-pitch")]
-    pub pixel_pitch: Length,
+    pub pixel_pitch: KicadDim,
 }
