@@ -11,6 +11,9 @@ mod generate;
 mod opt;
 mod sizes;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Error, Debug)]
 enum MainError {
     #[error("failed to load input file: {0}")]
