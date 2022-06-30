@@ -7,7 +7,11 @@ edition = "2021"
 [dependencies]
 clap = { version = "3", features = ["derive"] }
 env_logger = { version = "0.9", default-features = false, features = ["humantime"] }
+fixed = { version = "1", features = ["std"] }
+fixed-macro = "1"
+image = { version = "0.24", default-features = false, features = ["png"] }
 log = "0.4"
+thiserror = "1.0"
 
 [profile.release]
 panic = "abort"
