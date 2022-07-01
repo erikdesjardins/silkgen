@@ -1,4 +1,6 @@
 use crate::generate;
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 #[test]
 fn basic() {
@@ -10,9 +12,11 @@ fn run_against(file: &[u8]) -> String {
 
     let pixel_pitch = "1mm".parse().unwrap();
 
+    let rng = StdRng::from_seed(*b"1234567890abcdefghijklmnopqrstuv");
+
     let mut out = Vec::new();
 
-    generate::output_file("testname", image, pixel_pitch, &mut out).unwrap();
+    generate::output_file("testname", image, pixel_pitch, rng, &mut out).unwrap();
 
     String::from_utf8(out).unwrap()
 }

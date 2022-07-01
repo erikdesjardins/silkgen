@@ -1,15 +1,16 @@
 use crate::analyze::{Extents, PixelKind};
 use crate::sizes::{KicadDim, KicadPos, PixelDim, PixelPos};
 use image::{DynamicImage, GenericImageView};
+use rand::Rng;
 use std::io;
 use std::io::Write;
 use std::ops::Neg;
-use uuid::Uuid;
 
 pub fn output_file(
     name: &str,
     image: DynamicImage,
     pixel_pitch: KicadDim,
+    mut r: impl Rng,
     mut w: impl Write,
 ) -> Result<(), io::Error> {
     let image = image.into_luma_alpha8();
@@ -43,12 +44,12 @@ pub fn output_file(
         sexpr(w, "fp_text", |w| {
             w.write_all(b"reference \"G***\" (at 0 0) (layer F.Fab)\n")?;
             w.write_all(b"(effects (font (size 1.524 1.524) (thickness 0.3)))\n")?;
-            tstamp(w)
+            tstamp(w, &mut r)
         })?;
         sexpr(w, "fp_text", |w| {
             w.write_all(b"value \"LOGO\" (at 0.75 0) (layer F.Fab) hide\n")?;
             w.write_all(b"(effects (font (size 1.524 1.524) (thickness 0.3)))\n")?;
-            tstamp(w)
+            tstamp(w, &mut r)
         })?;
 
         // pixels
@@ -61,6 +62,7 @@ pub fn output_file(
             for layer in layers {
                 draw_pixel(
                     w,
+                    &mut r,
                     PixelPos {
                         x: PixelDim(x),
                         y: PixelDim(y),
@@ -78,6 +80,7 @@ pub fn output_file(
 
 fn draw_pixel(
     w: &mut impl Write,
+    r: &mut impl Rng,
     top_left: PixelPos,
     extents: &Extents,
     pixel_pitch: KicadDim,
@@ -101,7 +104,7 @@ fn draw_pixel(
         sexpr(w, "layer", |w| w.write_all(layer.as_bytes()))?;
         sexpr(w, "width", |w| w.write_all(b"0"))?;
         sexpr(w, "fill", |w| w.write_all(b"solid"))?;
-        tstamp(w)
+        tstamp(w, r)
     })
 }
 
@@ -109,9 +112,10 @@ fn xy(w: &mut impl Write, pos: KicadPos) -> Result<(), io::Error> {
     sexpr(w, "xy", |w| write!(w, "{} {}", pos.x, pos.y))
 }
 
-fn tstamp(w: &mut impl Write) -> Result<(), io::Error> {
+fn tstamp(w: &mut impl Write, r: &mut impl Rng) -> Result<(), io::Error> {
     sexpr(w, "tstamp", |w| {
-        w.write_all(Uuid::new_v4().to_string().as_bytes())
+        let uuid = uuid::Builder::from_random_bytes(r.gen()).into_uuid();
+        w.write_all(uuid.to_string().as_bytes())
     })
 }
 
