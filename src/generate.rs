@@ -90,15 +90,21 @@ fn draw_pixel(
         sexpr(w, "pts", |w| {
             // shift by 1 since we base positions on the top left of the pixel
             let center = extents.center() + PixelPos::X1 + PixelPos::Y1;
-            // place all 4 corners of the polygon
-            let kicad_pos = |pos: PixelPos| KicadPos {
-                x: neg_if(pos.x < center.x, pixel_pitch * (pos.x.abs_diff(center.x))),
-                y: neg_if(pos.y < center.y, pixel_pitch * (pos.y.abs_diff(center.y))),
-            };
-            xy(w, kicad_pos(top_left))?;
-            xy(w, kicad_pos(top_left + PixelPos::X1))?;
-            xy(w, kicad_pos(top_left + PixelPos::X1 + PixelPos::Y1))?;
-            xy(w, kicad_pos(top_left + PixelPos::Y1))?;
+            // find pixel coords of edges
+            let top = top_left.y;
+            let bot = top + PixelDim(1);
+            let left = top_left.x;
+            let right = left + PixelDim(1);
+            // find kicad coords of edges
+            let top = neg_if(top < center.y, pixel_pitch * (top.abs_diff(center.y)));
+            let bot = neg_if(bot < center.y, pixel_pitch * (bot.abs_diff(center.y)));
+            let left = neg_if(left < center.x, pixel_pitch * (left.abs_diff(center.x)));
+            let right = neg_if(right < center.x, pixel_pitch * (right.abs_diff(center.x)));
+            // place corners of the polygon
+            xy(w, KicadPos { x: left, y: top })?;
+            xy(w, KicadPos { x: right, y: top })?;
+            xy(w, KicadPos { x: right, y: bot })?;
+            xy(w, KicadPos { x: left, y: bot })?;
             Ok(())
         })?;
         sexpr(w, "layer", |w| w.write_all(layer.as_bytes()))?;
