@@ -1,4 +1,4 @@
-use derive_more::{Add, Neg};
+use derive_more::{Add, Neg, Sub};
 use fixed::types::I12F52;
 use fixed::ParseFixedError;
 use fixed_macro::fixed;
@@ -13,7 +13,7 @@ type Num = I12F52;
 const MM_PER_IN: Num = fixed!(25.4: I12F52);
 
 /// A dimension in fractional mm, as used in KiCad file formats
-#[derive(Copy, Clone, Neg)]
+#[derive(Copy, Clone, Add, Sub, Neg)]
 pub struct KicadDim(pub Num);
 
 impl Debug for KicadDim {

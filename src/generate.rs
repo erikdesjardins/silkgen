@@ -1,4 +1,4 @@
-use crate::analyze::{Extents, PixelKind};
+use crate::analyze::{Extents, Nearby, PixelKind};
 use crate::sizes::{KicadDim, KicadPos, PixelDim, PixelPos};
 use image::{DynamicImage, GenericImageView};
 use rand::Rng;
@@ -6,10 +6,15 @@ use std::io;
 use std::io::Write;
 use std::ops::Neg;
 
+pub struct Config {
+    pub pixel_pitch: KicadDim,
+    pub clearance: KicadDim,
+}
+
 pub fn output_file(
     name: &str,
     image: DynamicImage,
-    pixel_pitch: KicadDim,
+    config: Config,
     mut r: impl Rng,
     mut w: impl Write,
 ) -> Result<(), io::Error> {
@@ -59,6 +64,7 @@ pub fn output_file(
                 PixelKind::Light => &["F.SilkS"],
                 PixelKind::Dark => &["F.Cu", "F.Mask"],
             };
+            let nearby = Nearby::from_index(&image, x, y);
             for layer in layers {
                 draw_pixel(
                     w,
@@ -68,7 +74,8 @@ pub fn output_file(
                         y: PixelDim(y),
                     },
                     &extents,
-                    pixel_pitch,
+                    &nearby,
+                    &config,
                     layer,
                 )?;
             }
@@ -83,7 +90,8 @@ fn draw_pixel(
     r: &mut impl Rng,
     top_left: PixelPos,
     extents: &Extents,
-    pixel_pitch: KicadDim,
+    nearby: &Nearby,
+    config: &Config,
     layer: &str,
 ) -> Result<(), io::Error> {
     sexpr(w, "fp_poly", |w| {
@@ -96,10 +104,33 @@ fn draw_pixel(
             let left = top_left.x;
             let right = left + PixelDim(1);
             // find kicad coords of edges
-            let top = neg_if(top < center.y, pixel_pitch * (top.abs_diff(center.y)));
-            let bot = neg_if(bot < center.y, pixel_pitch * (bot.abs_diff(center.y)));
-            let left = neg_if(left < center.x, pixel_pitch * (left.abs_diff(center.x)));
-            let right = neg_if(right < center.x, pixel_pitch * (right.abs_diff(center.x)));
+            let kicad_pos = |pos: PixelDim, center_pos: PixelDim| {
+                neg_if(
+                    pos < center_pos,
+                    config.pixel_pitch * pos.abs_diff(center_pos),
+                )
+            };
+            let top = kicad_pos(top, center.y);
+            let bot = kicad_pos(bot, center.y);
+            let left = kicad_pos(left, center.x);
+            let right = kicad_pos(right, center.x);
+            // adjust to apply clearance to nearby edges
+            let apply_clearance = |pos, adjacent_kind, dir_is_positive| {
+                if (nearby.this, adjacent_kind) == (PixelKind::Light, PixelKind::Dark) {
+                    // only light-> dark transitions need to offset the (light) silkscreen
+                    if dir_is_positive {
+                        pos - config.clearance
+                    } else {
+                        pos + config.clearance
+                    }
+                } else {
+                    pos
+                }
+            };
+            let top = apply_clearance(top, nearby.top, false);
+            let bot = apply_clearance(bot, nearby.bot, true);
+            let left = apply_clearance(left, nearby.left, false);
+            let right = apply_clearance(right, nearby.right, true);
             // place corners of the polygon
             xy(w, KicadPos { x: left, y: top })?;
             xy(w, KicadPos { x: right, y: top })?;

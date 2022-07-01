@@ -1,7 +1,7 @@
 use crate::sizes::{PixelDim, PixelPos};
 use image::{GenericImageView, GrayAlphaImage, LumaA};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PixelKind {
     Transparent,
     Light,
@@ -67,6 +67,34 @@ impl Extents {
         PixelPos {
             x: PixelDim(x),
             y: PixelDim(y),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Nearby {
+    pub this: PixelKind,
+    pub top: PixelKind,
+    pub bot: PixelKind,
+    pub left: PixelKind,
+    pub right: PixelKind,
+}
+
+impl Nearby {
+    pub fn from_index(image: &GrayAlphaImage, x: u32, y: u32) -> Self {
+        let try_get = |x, y| {
+            let go = || image.get_pixel_checked(x?, y?);
+            match go() {
+                Some(pixel) => PixelKind::from_pixel(*pixel),
+                None => PixelKind::Transparent,
+            }
+        };
+        Self {
+            this: try_get(Some(x), Some(y)),
+            top: try_get(Some(x), y.checked_sub(1)),
+            bot: try_get(Some(x), y.checked_add(1)),
+            left: try_get(x.checked_sub(1), Some(y)),
+            right: try_get(x.checked_add(1), Some(y)),
         }
     }
 }

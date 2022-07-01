@@ -4,7 +4,7 @@ use rand::SeedableRng;
 use std::fs::File;
 use std::io;
 use std::io::BufWriter;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 mod analyze;
@@ -34,6 +34,7 @@ fn main() -> Result<(), err::DisplayError> {
         input,
         output,
         pixel_pitch,
+        clearance,
     } = clap::Parser::parse();
 
     env_logger::Builder::new()
@@ -53,7 +54,7 @@ fn main() -> Result<(), err::DisplayError> {
     let output = match output {
         Some(o) => o,
         None => {
-            let mut out_dir = PathBuf::from(input.parent().unwrap_or(Path::new(".")));
+            let mut out_dir = PathBuf::from(input.parent().unwrap_or_else(|| Path::new(".")));
             let mut out_name = name.to_owned();
             out_name.push(".kicad_mod");
             out_dir.push(out_name);
@@ -68,7 +69,10 @@ fn main() -> Result<(), err::DisplayError> {
     generate::output_file(
         &name.to_string_lossy(),
         image,
-        pixel_pitch,
+        generate::Config {
+            pixel_pitch,
+            clearance,
+        },
         StdRng::from_entropy(),
         BufWriter::new(&mut output_file),
     )
