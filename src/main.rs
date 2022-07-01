@@ -53,9 +53,11 @@ fn main() -> Result<(), err::DisplayError> {
     let output = match output {
         Some(o) => o,
         None => {
+            let mut out_dir = PathBuf::from(input.parent().unwrap_or(Path::new(".")));
             let mut out_name = name.to_owned();
             out_name.push(".kicad_mod");
-            PathBuf::from(out_name)
+            out_dir.push(out_name);
+            out_dir
         }
     };
 
