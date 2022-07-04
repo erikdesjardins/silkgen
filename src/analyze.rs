@@ -3,26 +3,18 @@ use image::{GenericImageView, GrayAlphaImage, LumaA};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PixelKind {
-    Transparent,
     Light,
     Dark,
 }
 
 impl PixelKind {
-    pub fn from_pixel(pixel: LumaA<u8>) -> Self {
+    pub fn from_pixel(pixel: LumaA<u8>) -> Option<Self> {
         let LumaA([luma, alpha]) = pixel;
 
         match () {
-            _ if alpha < u8::MAX / 2 => Self::Transparent,
-            _ if luma > u8::MAX / 2 => Self::Light,
-            _ => Self::Dark,
-        }
-    }
-
-    pub fn is_significant(&self) -> bool {
-        match self {
-            Self::Transparent => false,
-            Self::Light | Self::Dark => true,
+            _ if alpha < u8::MAX / 2 => None,
+            _ if luma > u8::MAX / 2 => Some(Self::Light),
+            _ => Some(Self::Dark),
         }
     }
 }
@@ -41,7 +33,7 @@ impl Extents {
         let mut max_y = 0;
 
         for (x, y, pixel) in GenericImageView::pixels(image) {
-            if PixelKind::from_pixel(pixel).is_significant() {
+            if PixelKind::from_pixel(pixel).is_some() {
                 min_x = min_x.min(x);
                 max_x = max_x.max(x);
                 min_y = min_y.min(y);
@@ -73,25 +65,22 @@ impl Extents {
 
 #[derive(Debug)]
 pub struct Nearby {
-    pub this: PixelKind,
-    pub top: PixelKind,
-    pub bot: PixelKind,
-    pub left: PixelKind,
-    pub right: PixelKind,
-    pub top_left: PixelKind,
-    pub top_right: PixelKind,
-    pub bot_left: PixelKind,
-    pub bot_right: PixelKind,
+    pub this: Option<PixelKind>,
+    pub top: Option<PixelKind>,
+    pub bot: Option<PixelKind>,
+    pub left: Option<PixelKind>,
+    pub right: Option<PixelKind>,
+    pub top_left: Option<PixelKind>,
+    pub top_right: Option<PixelKind>,
+    pub bot_left: Option<PixelKind>,
+    pub bot_right: Option<PixelKind>,
 }
 
 impl Nearby {
     pub fn from_index(image: &GrayAlphaImage, x: u32, y: u32) -> Self {
         let try_get = |x, y| {
-            let go = || image.get_pixel_checked(x?, y?);
-            match go() {
-                Some(pixel) => PixelKind::from_pixel(*pixel),
-                None => PixelKind::Transparent,
-            }
+            let pixel = image.get_pixel_checked(x?, y?)?;
+            PixelKind::from_pixel(*pixel)
         };
         Self {
             this: try_get(Some(x), Some(y)),

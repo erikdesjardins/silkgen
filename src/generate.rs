@@ -74,9 +74,9 @@ pub fn output_file(
         // pixels
         for (x, y, pixel) in GenericImageView::pixels(&image) {
             let layers: &[_] = match PixelKind::from_pixel(pixel) {
-                PixelKind::Transparent => continue,
-                PixelKind::Light => &["F.SilkS"],
-                PixelKind::Dark => &["F.Cu", "F.Mask"],
+                None => continue,
+                Some(PixelKind::Light) => &["F.SilkS"],
+                Some(PixelKind::Dark) => &["F.Cu", "F.Mask"],
             };
             let nearby = Nearby::from_index(&image, x, y);
             for layer in layers {
@@ -141,13 +141,13 @@ fn draw_pixel(
                     };
 
                     // dark pixels always fill the entire pixel, and don't need special processing
-                    if nearby.this == PixelKind::Dark {
+                    if nearby.this == Some(PixelKind::Dark) {
                         points.push(KicadPos { x, y });
                         return;
                     }
                     assert_eq!(
                         nearby.this,
-                        PixelKind::Light,
+                        Some(PixelKind::Light),
                         "should only be light pixels remaining"
                     );
 
@@ -156,15 +156,15 @@ fn draw_pixel(
                     let y_inset = sub_or_add(y, vert_is_positive, config.clearance);
 
                     // add clearance for directly adjacent dark->light pixel transitions
-                    if horiz == PixelKind::Dark {
+                    if horiz == Some(PixelKind::Dark) {
                         x = x_inset;
                     }
-                    if vert == PixelKind::Dark {
+                    if vert == Some(PixelKind::Dark) {
                         y = y_inset;
                     }
 
                     // normal cases: no diagonal inclusion, or already inset on one side or the other
-                    if x == x_inset || y == y_inset || diag != PixelKind::Dark {
+                    if x == x_inset || y == y_inset || diag != Some(PixelKind::Dark) {
                         points.push(KicadPos { x, y });
                         return;
                     }
