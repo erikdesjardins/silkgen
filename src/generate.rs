@@ -46,7 +46,13 @@ pub fn output_file(
 
         // prelude
         sexpr(w, "version", |w| w.write_all(b"20220630"))?;
-        sexpr(w, "generator", |w| w.write_all(b"silkgen"))?;
+        sexpr(w, "generator", |w| {
+            w.write_all(b"\"")?;
+            w.write_all(
+                concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION")).as_bytes(),
+            )?;
+            w.write_all(b"\"")
+        })?;
         sexpr(w, "layer", |w| w.write_all(b"F.SilkS"))?;
         sexpr(w, "tedit", |w| w.write_all(b"0"))?;
         sexpr(w, "attr", |w| {
