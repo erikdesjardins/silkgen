@@ -21,18 +21,7 @@ pub fn output_file(
         ChaCha12Rng::from_seed(hasher.finalize().try_into().unwrap())
     };
 
-    let image = image.into_luma_alpha8();
-
-    log::info!(
-        "Total image dimensions: {} x {}",
-        image.width(),
-        image.height()
-    );
-
     let extents = Extents::from_image(&image);
-
-    log::info!("Extent of significant pixels: {:?}", extents);
-    log::info!("Center of significant pixels: {:?}", extents.center());
 
     sexpr(&mut w, "footprint", |w| {
         w.write_all(b"\"")?;
@@ -67,7 +56,11 @@ pub fn output_file(
         })?;
 
         // pixels
-        for (x, y, pixel) in GenericImageView::pixels(&image) {
+        for (x, y, pixel) in image.pixels() {
+            let pos = PixelPos {
+                x: PixelDim(x),
+                y: PixelDim(y),
+            };
             let kind = match PixelKind::from_pixel(pixel) {
                 Some(k) => k,
                 None => continue,
@@ -76,21 +69,13 @@ pub fn output_file(
                 PixelKind::Light => &["F.SilkS"],
                 PixelKind::Dark => &["F.Cu", "F.Mask"],
             };
-            let nearby = Nearby::from_index(&image, x, y);
+            let nearby = Nearby::from_pos(&image, pos);
             for layer in layers {
                 sexpr(w, "fp_poly", |w| {
                     sexpr(w, "pts", |w| {
-                        for_each_point_in_pixel(
-                            PixelPos {
-                                x: PixelDim(x),
-                                y: PixelDim(y),
-                            },
-                            kind,
-                            &nearby,
-                            &extents,
-                            &config,
-                            |point| sexpr(w, "xy", |w| write!(w, "{} {}", point.x, point.y)),
-                        )
+                        for_each_point_in_pixel(pos, kind, &nearby, &extents, config, |point| {
+                            sexpr(w, "xy", |w| write!(w, "{} {}", point.x, point.y))
+                        })
                     })?;
                     sexpr(w, "layer", |w| w.write_all(layer.as_bytes()))?;
                     sexpr(w, "width", |w| w.write_all(b"0"))?;

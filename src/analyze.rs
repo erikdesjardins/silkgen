@@ -1,6 +1,6 @@
 use crate::opt::Config;
 use crate::sizes::{KicadPos, PixelDim, PixelPos};
-use image::{GenericImageView, GrayAlphaImage, LumaA};
+use image::{GenericImageView, LumaA, Pixel};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PixelKind {
@@ -9,8 +9,8 @@ pub enum PixelKind {
 }
 
 impl PixelKind {
-    pub fn from_pixel(pixel: LumaA<u8>) -> Option<Self> {
-        let LumaA([luma, alpha]) = pixel;
+    pub fn from_pixel(pixel: impl Pixel<Subpixel = u8>) -> Option<Self> {
+        let LumaA([luma, alpha]) = pixel.to_luma_alpha();
 
         match () {
             _ if alpha < u8::MAX / 2 => None,
@@ -27,13 +27,13 @@ pub struct Extents {
 }
 
 impl Extents {
-    pub fn from_image(image: &GrayAlphaImage) -> Self {
+    pub fn from_image(image: &impl GenericImageView<Pixel = impl Pixel<Subpixel = u8>>) -> Self {
         let mut min_x = u32::MAX;
         let mut max_x = 0;
         let mut min_y = u32::MAX;
         let mut max_y = 0;
 
-        for (x, y, pixel) in GenericImageView::pixels(image) {
+        for (x, y, pixel) in image.pixels() {
             if PixelKind::from_pixel(pixel).is_some() {
                 min_x = min_x.min(x);
                 max_x = max_x.max(x);
@@ -77,10 +77,21 @@ pub struct Nearby {
 }
 
 impl Nearby {
-    pub fn from_index(image: &GrayAlphaImage, x: u32, y: u32) -> Self {
+    pub fn from_pos(
+        image: &impl GenericImageView<Pixel = impl Pixel<Subpixel = u8>>,
+        PixelPos {
+            x: PixelDim(x),
+            y: PixelDim(y),
+        }: PixelPos,
+    ) -> Self {
         let try_get = |x, y| {
-            let pixel = image.get_pixel_checked(x?, y?)?;
-            PixelKind::from_pixel(*pixel)
+            let x = x?;
+            let y = y?;
+            if image.in_bounds(x, y) {
+                PixelKind::from_pixel(image.get_pixel(x, y))
+            } else {
+                None
+            }
         };
         Self {
             top: try_get(Some(x), y.checked_sub(1)),
