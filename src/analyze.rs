@@ -1,4 +1,5 @@
-use crate::sizes::{PixelDim, PixelPos};
+use crate::opt::Config;
+use crate::sizes::{KicadPos, PixelDim, PixelPos};
 use image::{GenericImageView, GrayAlphaImage, LumaA};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -92,4 +93,133 @@ impl Nearby {
             bot_right: try_get(x.checked_add(1), y.checked_add(1)),
         }
     }
+}
+
+pub fn for_each_point_in_pixel<E>(
+    top_left: PixelPos,
+    kind: PixelKind,
+    nearby: &Nearby,
+    extents: &Extents,
+    config: &Config,
+    mut f: impl FnMut(KicadPos) -> Result<(), E>,
+) -> Result<(), E> {
+    // shift by 1 since we base positions on the top left of the pixel
+    let center = extents.center() + PixelPos::X1 + PixelPos::Y1;
+    // find pixel coords of edges
+    let top = top_left.y;
+    let bot = top + PixelDim(1);
+    let left = top_left.x;
+    let right = left + PixelDim(1);
+    // find kicad coords of edges
+    let kicad_pos = |pos: PixelDim, center_pos: PixelDim| {
+        let relative_pos = config.pixel_pitch * pos.abs_diff(center_pos);
+        if pos < center_pos {
+            -relative_pos
+        } else {
+            relative_pos
+        }
+    };
+    let top = kicad_pos(top, center.y);
+    let bot = kicad_pos(bot, center.y);
+    let left = kicad_pos(left, center.x);
+    let right = kicad_pos(right, center.x);
+    // place points
+    let mut add_points_from =
+        |mut x, mut y, horiz, vert, diag, horiz_is_positive, vert_is_positive| {
+            let sub_or_add = |lhs, should_sub, rhs| {
+                if should_sub {
+                    lhs - rhs
+                } else {
+                    lhs + rhs
+                }
+            };
+
+            match kind {
+                PixelKind::Dark => {
+                    // dark pixels always fill the entire pixel, and don't need special processing
+                    f(KicadPos { x, y })
+                }
+                PixelKind::Light => {
+                    // prepare inset dimensions
+                    let x_inset = sub_or_add(x, horiz_is_positive, config.clearance);
+                    let y_inset = sub_or_add(y, vert_is_positive, config.clearance);
+
+                    // add clearance for directly adjacent dark->light pixel transitions
+                    if horiz == Some(PixelKind::Dark) {
+                        x = x_inset;
+                    }
+                    if vert == Some(PixelKind::Dark) {
+                        y = y_inset;
+                    }
+
+                    if x == x_inset || y == y_inset || diag != Some(PixelKind::Dark) {
+                        // normal case: no diagonal inclusion, or already inset on one side or the other
+                        f(KicadPos { x, y })
+                    } else {
+                        // special case: handle diagonal inclusion, splitting the corner into three points
+                        //         x  x_inset
+                        //
+                        // y       +  +---- ...
+                        //            |
+                        // y_inset +--+
+                        //         |
+                        //         |
+                        //        ...
+                        let mut new_points = [
+                            KicadPos { x, y: y_inset },
+                            KicadPos {
+                                x: x_inset,
+                                y: y_inset,
+                            },
+                            KicadPos { x: x_inset, y },
+                        ];
+                        // handle different coordinate ordering for top right and bottom left
+                        if horiz_is_positive != vert_is_positive {
+                            new_points.reverse();
+                        }
+                        for point in new_points {
+                            f(point)?;
+                        }
+                        Ok(())
+                    }
+                }
+            }
+        };
+    add_points_from(
+        left,
+        top,
+        nearby.left,
+        nearby.top,
+        nearby.top_left,
+        false,
+        false,
+    )?;
+    add_points_from(
+        right,
+        top,
+        nearby.right,
+        nearby.top,
+        nearby.top_right,
+        true,
+        false,
+    )?;
+    add_points_from(
+        right,
+        bot,
+        nearby.right,
+        nearby.bot,
+        nearby.bot_right,
+        true,
+        true,
+    )?;
+    add_points_from(
+        left,
+        bot,
+        nearby.left,
+        nearby.bot,
+        nearby.bot_left,
+        false,
+        true,
+    )?;
+    Ok(())
 }

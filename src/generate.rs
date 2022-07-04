@@ -1,22 +1,17 @@
-use crate::analyze::{Extents, Nearby, PixelKind};
-use crate::sizes::{KicadDim, KicadPos, PixelDim, PixelPos};
+use crate::analyze::{for_each_point_in_pixel, Extents, Nearby, PixelKind};
+use crate::opt::Config;
+use crate::sizes::{PixelDim, PixelPos};
 use image::{DynamicImage, GenericImageView};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha12Rng;
 use sha2::{Digest, Sha256};
 use std::io;
 use std::io::Write;
-use std::ops::Neg;
-
-pub struct Config {
-    pub pixel_pitch: KicadDim,
-    pub clearance: KicadDim,
-}
 
 pub fn output_file(
     name: &str,
     image: DynamicImage,
-    config: Config,
+    config: &Config,
     mut w: impl Write,
 ) -> Result<(), io::Error> {
     let mut r = {
@@ -83,165 +78,30 @@ pub fn output_file(
             };
             let nearby = Nearby::from_index(&image, x, y);
             for layer in layers {
-                draw_pixel(
-                    w,
-                    &mut r,
-                    PixelPos {
-                        x: PixelDim(x),
-                        y: PixelDim(y),
-                    },
-                    kind,
-                    &extents,
-                    &nearby,
-                    &config,
-                    layer,
-                )?;
+                sexpr(w, "fp_poly", |w| {
+                    sexpr(w, "pts", |w| {
+                        for_each_point_in_pixel(
+                            PixelPos {
+                                x: PixelDim(x),
+                                y: PixelDim(y),
+                            },
+                            kind,
+                            &nearby,
+                            &extents,
+                            &config,
+                            |point| sexpr(w, "xy", |w| write!(w, "{} {}", point.x, point.y)),
+                        )
+                    })?;
+                    sexpr(w, "layer", |w| w.write_all(layer.as_bytes()))?;
+                    sexpr(w, "width", |w| w.write_all(b"0"))?;
+                    sexpr(w, "fill", |w| w.write_all(b"solid"))?;
+                    tstamp(w, &mut r)
+                })?;
             }
         }
 
         Ok(())
     })
-}
-
-fn draw_pixel(
-    w: &mut impl Write,
-    r: &mut impl Rng,
-    top_left: PixelPos,
-    kind: PixelKind,
-    extents: &Extents,
-    nearby: &Nearby,
-    config: &Config,
-    layer: &str,
-) -> Result<(), io::Error> {
-    sexpr(w, "fp_poly", |w| {
-        sexpr(w, "pts", |w| {
-            // shift by 1 since we base positions on the top left of the pixel
-            let center = extents.center() + PixelPos::X1 + PixelPos::Y1;
-            // find pixel coords of edges
-            let top = top_left.y;
-            let bot = top + PixelDim(1);
-            let left = top_left.x;
-            let right = left + PixelDim(1);
-            // find kicad coords of edges
-            let kicad_pos = |pos: PixelDim, center_pos: PixelDim| {
-                neg_if(
-                    pos < center_pos,
-                    config.pixel_pitch * pos.abs_diff(center_pos),
-                )
-            };
-            let top = kicad_pos(top, center.y);
-            let bot = kicad_pos(bot, center.y);
-            let left = kicad_pos(left, center.x);
-            let right = kicad_pos(right, center.x);
-            // place points
-            let mut add_points_from =
-                |mut x, mut y, horiz, vert, diag, horiz_is_positive, vert_is_positive| {
-                    let sub_or_add = |lhs, should_sub, rhs| {
-                        if should_sub {
-                            lhs - rhs
-                        } else {
-                            lhs + rhs
-                        }
-                    };
-
-                    match kind {
-                        PixelKind::Dark => {
-                            // dark pixels always fill the entire pixel, and don't need special processing
-                            xy(w, KicadPos { x, y })
-                        }
-                        PixelKind::Light => {
-                            // prepare inset dimensions
-                            let x_inset = sub_or_add(x, horiz_is_positive, config.clearance);
-                            let y_inset = sub_or_add(y, vert_is_positive, config.clearance);
-
-                            // add clearance for directly adjacent dark->light pixel transitions
-                            if horiz == Some(PixelKind::Dark) {
-                                x = x_inset;
-                            }
-                            if vert == Some(PixelKind::Dark) {
-                                y = y_inset;
-                            }
-
-                            if x == x_inset || y == y_inset || diag != Some(PixelKind::Dark) {
-                                // normal case: no diagonal inclusion, or already inset on one side or the other
-                                xy(w, KicadPos { x, y })
-                            } else {
-                                // special case: handle diagonal inclusion, splitting the corner into three points
-                                //         x  x_inset
-                                //
-                                // y       +  +---- ...
-                                //            |
-                                // y_inset +--+
-                                //         |
-                                //         |
-                                //        ...
-                                let mut new_points = [
-                                    KicadPos { x, y: y_inset },
-                                    KicadPos {
-                                        x: x_inset,
-                                        y: y_inset,
-                                    },
-                                    KicadPos { x: x_inset, y },
-                                ];
-                                // handle different coordinate ordering for top right and bottom left
-                                if horiz_is_positive != vert_is_positive {
-                                    new_points.reverse();
-                                }
-                                for point in new_points {
-                                    xy(w, point)?;
-                                }
-                                Ok(())
-                            }
-                        }
-                    }
-                };
-            add_points_from(
-                left,
-                top,
-                nearby.left,
-                nearby.top,
-                nearby.top_left,
-                false,
-                false,
-            )?;
-            add_points_from(
-                right,
-                top,
-                nearby.right,
-                nearby.top,
-                nearby.top_right,
-                true,
-                false,
-            )?;
-            add_points_from(
-                right,
-                bot,
-                nearby.right,
-                nearby.bot,
-                nearby.bot_right,
-                true,
-                true,
-            )?;
-            add_points_from(
-                left,
-                bot,
-                nearby.left,
-                nearby.bot,
-                nearby.bot_left,
-                false,
-                true,
-            )?;
-            Ok(())
-        })?;
-        sexpr(w, "layer", |w| w.write_all(layer.as_bytes()))?;
-        sexpr(w, "width", |w| w.write_all(b"0"))?;
-        sexpr(w, "fill", |w| w.write_all(b"solid"))?;
-        tstamp(w, r)
-    })
-}
-
-fn xy(w: &mut impl Write, point: KicadPos) -> Result<(), io::Error> {
-    sexpr(w, "xy", |w| write!(w, "{} {}", point.x, point.y))
 }
 
 fn tstamp(w: &mut impl Write, r: &mut impl Rng) -> Result<(), io::Error> {
@@ -262,12 +122,4 @@ fn sexpr<W: Write, R>(
     let r = f(w)?;
     w.write_all(b")\n")?;
     Ok(r)
-}
-
-fn neg_if<T: Neg<Output = T>>(cond: bool, x: T) -> T {
-    if cond {
-        -x
-    } else {
-        x
-    }
 }
