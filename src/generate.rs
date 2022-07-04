@@ -1,7 +1,9 @@
 use crate::analyze::{Extents, Nearby, PixelKind};
 use crate::sizes::{KicadDim, KicadPos, PixelDim, PixelPos};
 use image::{DynamicImage, GenericImageView};
-use rand::Rng;
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha12Rng;
+use sha2::{Digest, Sha256};
 use std::io;
 use std::io::Write;
 use std::ops::Neg;
@@ -15,9 +17,15 @@ pub fn output_file(
     name: &str,
     image: DynamicImage,
     config: Config,
-    mut r: impl Rng,
     mut w: impl Write,
 ) -> Result<(), io::Error> {
+    let mut r = {
+        // create deterministic hasher based on file name
+        let mut hasher = Sha256::new();
+        hasher.update(name);
+        ChaCha12Rng::from_seed(hasher.finalize().try_into().unwrap())
+    };
+
     let image = image.into_luma_alpha8();
 
     log::info!(

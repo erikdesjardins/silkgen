@@ -1,6 +1,4 @@
 use image::ImageError;
-use rand::rngs::StdRng;
-use rand::SeedableRng;
 use std::fs::File;
 use std::io;
 use std::io::BufWriter;
@@ -73,7 +71,6 @@ fn main() -> Result<(), err::DisplayError> {
             pixel_pitch,
             clearance,
         },
-        StdRng::from_entropy(),
         BufWriter::new(&mut output_file),
     )
     .map_err(MainError::FailedToWriteToOutput)?;

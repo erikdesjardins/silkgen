@@ -1,8 +1,6 @@
 use crate::generate;
-use rand::rngs::StdRng;
-use rand::SeedableRng;
 
-fn run_against(file: &[u8]) -> String {
+fn run_against(name: &str, file: &[u8]) -> String {
     let image = image::load_from_memory(file).unwrap();
 
     let config = generate::Config {
@@ -10,26 +8,22 @@ fn run_against(file: &[u8]) -> String {
         clearance: "0.1mm".parse().unwrap(),
     };
 
-    let rng = StdRng::from_seed(*b"1234567890abcdefghijklmnopqrstuv");
-
     let mut out = Vec::new();
 
-    generate::output_file("testname", image, config, rng, &mut out).unwrap();
+    generate::output_file(name, image, config, &mut out).unwrap();
 
     String::from_utf8(out).unwrap()
 }
 
-#[test]
-fn basic() {
-    insta::assert_snapshot!(run_against(include_bytes!("basic.png")));
+macro_rules! test {
+    ($name:ident, $file:literal) => {
+        #[test]
+        fn $name() {
+            insta::assert_snapshot!(run_against(stringify!($name), include_bytes!($file)));
+        }
+    };
 }
 
-#[test]
-fn clearance() {
-    insta::assert_snapshot!(run_against(include_bytes!("clearance.png")));
-}
-
-#[test]
-fn annoying_dog() {
-    insta::assert_snapshot!(run_against(include_bytes!("annoying_dog.png")));
-}
+test!(basic, "basic.png");
+test!(clearance, "clearance.png");
+test!(annoying_dog, "annoying_dog.png");
