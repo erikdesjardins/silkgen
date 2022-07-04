@@ -1,13 +1,21 @@
 [package]
 name = "silkgen"
-version = "0.1.0"
+version = "0.2.0"
 description = "Generate KiCad silkscreen art from PNGs."
 edition = "2021"
 
 [dependencies]
 clap = { version = "3", features = ["derive"] }
+derive_more = "0.99"
 env_logger = { version = "0.9", default-features = false, features = ["humantime"] }
+fixed = { version = "1", features = ["std"] }
+fixed-macro = "1"
+image = { version = "0.24", default-features = false, features = ["png"] }
+insta = "1"
 log = "0.4"
+rand = "0.8"
+thiserror = "1"
+uuid = { version = "1", features = ["v4"] }
 
 [profile.release]
 panic = "abort"
