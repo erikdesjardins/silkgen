@@ -1,6 +1,6 @@
 [package]
 name = "silkgen"
-version = "0.2.0"
+version = "0.3.0"
 description = "Generate KiCad silkscreen art from PNGs."
 edition = "2021"
 
