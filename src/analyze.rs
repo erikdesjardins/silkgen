@@ -78,6 +78,10 @@ pub struct Nearby {
     pub bot: PixelKind,
     pub left: PixelKind,
     pub right: PixelKind,
+    pub top_left: PixelKind,
+    pub top_right: PixelKind,
+    pub bot_left: PixelKind,
+    pub bot_right: PixelKind,
 }
 
 impl Nearby {
@@ -95,6 +99,10 @@ impl Nearby {
             bot: try_get(Some(x), y.checked_add(1)),
             left: try_get(x.checked_sub(1), Some(y)),
             right: try_get(x.checked_add(1), Some(y)),
+            top_left: try_get(x.checked_sub(1), y.checked_sub(1)),
+            top_right: try_get(x.checked_add(1), y.checked_sub(1)),
+            bot_left: try_get(x.checked_sub(1), y.checked_add(1)),
+            bot_right: try_get(x.checked_add(1), y.checked_add(1)),
         }
     }
 }

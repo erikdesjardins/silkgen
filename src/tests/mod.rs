@@ -28,3 +28,8 @@ fn basic() {
 fn clearance() {
     insta::assert_snapshot!(run_against(include_bytes!("clearance.png")));
 }
+
+#[test]
+fn annoying_dog() {
+    insta::assert_snapshot!(run_against(include_bytes!("annoying_dog.png")));
+}

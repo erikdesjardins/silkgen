@@ -13,7 +13,7 @@ type Num = I12F52;
 const MM_PER_IN: Num = fixed!(25.4: I12F52);
 
 /// A dimension in fractional mm, as used in KiCad file formats
-#[derive(Copy, Clone, Add, Sub, Neg)]
+#[derive(Copy, Clone, PartialEq, Add, Sub, Neg)]
 pub struct KicadDim(pub Num);
 
 impl Debug for KicadDim {
