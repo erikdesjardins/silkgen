@@ -128,8 +128,7 @@ fn draw_pixel(
             let bot = kicad_pos(bot, center.y);
             let left = kicad_pos(left, center.x);
             let right = kicad_pos(right, center.x);
-            // collect points
-            let mut points = Vec::new();
+            // place points
             let mut add_points_from =
                 |mut x, mut y, horiz, vert, diag, horiz_is_positive, vert_is_positive| {
                     let sub_or_add = |lhs, should_sub, rhs| {
@@ -142,8 +141,7 @@ fn draw_pixel(
 
                     // dark pixels always fill the entire pixel, and don't need special processing
                     if nearby.this == Some(PixelKind::Dark) {
-                        points.push(KicadPos { x, y });
-                        return;
+                        return xy(w, KicadPos { x, y });
                     }
                     assert_eq!(
                         nearby.this,
@@ -165,8 +163,7 @@ fn draw_pixel(
 
                     // normal cases: no diagonal inclusion, or already inset on one side or the other
                     if x == x_inset || y == y_inset || diag != Some(PixelKind::Dark) {
-                        points.push(KicadPos { x, y });
-                        return;
+                        return xy(w, KicadPos { x, y });
                     }
 
                     // special case: handle diagonal inclusion, splitting the corner into three points
@@ -190,7 +187,10 @@ fn draw_pixel(
                     if horiz_is_positive != vert_is_positive {
                         new_points.reverse();
                     }
-                    points.extend(new_points);
+                    for point in new_points {
+                        xy(w, point)?;
+                    }
+                    Ok(())
                 };
             add_points_from(
                 left,
@@ -200,7 +200,7 @@ fn draw_pixel(
                 nearby.top_left,
                 false,
                 false,
-            );
+            )?;
             add_points_from(
                 right,
                 top,
@@ -209,7 +209,7 @@ fn draw_pixel(
                 nearby.top_right,
                 true,
                 false,
-            );
+            )?;
             add_points_from(
                 right,
                 bot,
@@ -218,7 +218,7 @@ fn draw_pixel(
                 nearby.bot_right,
                 true,
                 true,
-            );
+            )?;
             add_points_from(
                 left,
                 bot,
@@ -227,11 +227,7 @@ fn draw_pixel(
                 nearby.bot_left,
                 false,
                 true,
-            );
-            // place points
-            for point in points {
-                sexpr(w, "xy", |w| write!(w, "{} {}", point.x, point.y))?;
-            }
+            )?;
             Ok(())
         })?;
         sexpr(w, "layer", |w| w.write_all(layer.as_bytes()))?;
@@ -239,6 +235,10 @@ fn draw_pixel(
         sexpr(w, "fill", |w| w.write_all(b"solid"))?;
         tstamp(w, r)
     })
+}
+
+fn xy(w: &mut impl Write, point: KicadPos) -> Result<(), io::Error> {
+    sexpr(w, "xy", |w| write!(w, "{} {}", point.x, point.y))
 }
 
 fn tstamp(w: &mut impl Write, r: &mut impl Rng) -> Result<(), io::Error> {
