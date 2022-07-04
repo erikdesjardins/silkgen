@@ -47,7 +47,7 @@ pub fn output_file(
         // prelude
         sexpr(w, "version", |w| w.write_all(b"20220630"))?;
         sexpr(w, "generator", |w| w.write_all(b"silkgen"))?;
-        sexpr(w, "layer", |w| w.write_all(b"F.Silkscreen"))?;
+        sexpr(w, "layer", |w| w.write_all(b"F.SilkS"))?;
         sexpr(w, "tedit", |w| w.write_all(b"0"))?;
         sexpr(w, "attr", |w| {
             w.write_all(b"board_only exclude_from_pos_files exclude_from_bom")

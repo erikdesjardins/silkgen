@@ -5,7 +5,7 @@ expression: "run_against(stringify!(annoying_dog), include_bytes!(\"annoying_dog
 (footprint "annoying_dog"
 (version 20220630)
 (generator silkgen)
-(layer F.Silkscreen)
+(layer F.SilkS)
 (tedit 0)
 (attr board_only exclude_from_pos_files exclude_from_bom)
 (fp_text reference "G***" (at 0 0) (layer F.Fab)
