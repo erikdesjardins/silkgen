@@ -244,7 +244,7 @@ fn xy(w: &mut impl Write, point: KicadPos) -> Result<(), io::Error> {
 fn tstamp(w: &mut impl Write, r: &mut impl Rng) -> Result<(), io::Error> {
     sexpr(w, "tstamp", |w| {
         let uuid = uuid::Builder::from_random_bytes(r.gen()).into_uuid();
-        w.write_all(uuid.to_string().as_bytes())
+        write!(w, "{}", uuid)
     })
 }
 
