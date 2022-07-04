@@ -27,12 +27,11 @@ enum MainError {
 }
 
 fn main() -> Result<(), err::DisplayError> {
-    let opt::Args {
+    let opt::Arguments {
         verbose,
         input,
         output,
-        pixel_pitch,
-        clearance,
+        config,
     } = clap::Parser::parse();
 
     env_logger::Builder::new()
@@ -67,10 +66,7 @@ fn main() -> Result<(), err::DisplayError> {
     generate::output_file(
         &name.to_string_lossy(),
         image,
-        generate::Config {
-            pixel_pitch,
-            clearance,
-        },
+        &config,
         BufWriter::new(&mut output_file),
     )
     .map_err(MainError::FailedToWriteToOutput)?;

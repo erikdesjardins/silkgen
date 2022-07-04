@@ -4,8 +4,8 @@ expression: "run_against(stringify!(basic), include_bytes!(\"basic.png\"))"
 ---
 (footprint "basic"
 (version 20220630)
-(generator silkgen)
-(layer F.Silkscreen)
+(generator "silkgen x.x.x")
+(layer F.SilkS)
 (tedit 0)
 (attr board_only exclude_from_pos_files exclude_from_bom)
 (fp_text reference "G***" (at 0 0) (layer F.Fab)

@@ -1,10 +1,10 @@
 use crate::sizes::KicadDim;
-use clap::Parser;
+use clap::{Args, Parser};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[clap(version, about)]
-pub struct Args {
+pub struct Arguments {
     /// Logging verbosity (-v info, -vv debug, -vvv trace)
     #[clap(short = 'v', long = "verbose", parse(from_occurrences), global = true)]
     pub verbose: u8,
@@ -16,6 +16,12 @@ pub struct Args {
     #[clap(short = 'o', long = "output")]
     pub output: Option<PathBuf>,
 
+    #[clap(flatten)]
+    pub config: Config,
+}
+
+#[derive(Args, Debug)]
+pub struct Config {
     /// Size of one pixel in the output footprint (e.g. 1mm or 0.05in)
     #[clap(short = 'p', long = "pixel-pitch")]
     pub pixel_pitch: KicadDim,
