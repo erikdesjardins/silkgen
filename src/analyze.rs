@@ -65,7 +65,6 @@ impl Extents {
 
 #[derive(Debug)]
 pub struct Nearby {
-    pub this: Option<PixelKind>,
     pub top: Option<PixelKind>,
     pub bot: Option<PixelKind>,
     pub left: Option<PixelKind>,
@@ -83,7 +82,6 @@ impl Nearby {
             PixelKind::from_pixel(*pixel)
         };
         Self {
-            this: try_get(Some(x), Some(y)),
             top: try_get(Some(x), y.checked_sub(1)),
             bot: try_get(Some(x), y.checked_add(1)),
             left: try_get(x.checked_sub(1), Some(y)),

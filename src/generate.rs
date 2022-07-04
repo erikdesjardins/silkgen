@@ -73,10 +73,13 @@ pub fn output_file(
 
         // pixels
         for (x, y, pixel) in GenericImageView::pixels(&image) {
-            let layers: &[_] = match PixelKind::from_pixel(pixel) {
+            let kind = match PixelKind::from_pixel(pixel) {
+                Some(k) => k,
                 None => continue,
-                Some(PixelKind::Light) => &["F.SilkS"],
-                Some(PixelKind::Dark) => &["F.Cu", "F.Mask"],
+            };
+            let layers: &[_] = match kind {
+                PixelKind::Light => &["F.SilkS"],
+                PixelKind::Dark => &["F.Cu", "F.Mask"],
             };
             let nearby = Nearby::from_index(&image, x, y);
             for layer in layers {
@@ -87,6 +90,7 @@ pub fn output_file(
                         x: PixelDim(x),
                         y: PixelDim(y),
                     },
+                    kind,
                     &extents,
                     &nearby,
                     &config,
@@ -103,6 +107,7 @@ fn draw_pixel(
     w: &mut impl Write,
     r: &mut impl Rng,
     top_left: PixelPos,
+    kind: PixelKind,
     extents: &Extents,
     nearby: &Nearby,
     config: &Config,
@@ -139,58 +144,56 @@ fn draw_pixel(
                         }
                     };
 
-                    // dark pixels always fill the entire pixel, and don't need special processing
-                    if nearby.this == Some(PixelKind::Dark) {
-                        return xy(w, KicadPos { x, y });
-                    }
-                    assert_eq!(
-                        nearby.this,
-                        Some(PixelKind::Light),
-                        "should only be light pixels remaining"
-                    );
+                    match kind {
+                        PixelKind::Dark => {
+                            // dark pixels always fill the entire pixel, and don't need special processing
+                            xy(w, KicadPos { x, y })
+                        }
+                        PixelKind::Light => {
+                            // prepare inset dimensions
+                            let x_inset = sub_or_add(x, horiz_is_positive, config.clearance);
+                            let y_inset = sub_or_add(y, vert_is_positive, config.clearance);
 
-                    // prepare inset dimensions
-                    let x_inset = sub_or_add(x, horiz_is_positive, config.clearance);
-                    let y_inset = sub_or_add(y, vert_is_positive, config.clearance);
+                            // add clearance for directly adjacent dark->light pixel transitions
+                            if horiz == Some(PixelKind::Dark) {
+                                x = x_inset;
+                            }
+                            if vert == Some(PixelKind::Dark) {
+                                y = y_inset;
+                            }
 
-                    // add clearance for directly adjacent dark->light pixel transitions
-                    if horiz == Some(PixelKind::Dark) {
-                        x = x_inset;
+                            if x == x_inset || y == y_inset || diag != Some(PixelKind::Dark) {
+                                // normal case: no diagonal inclusion, or already inset on one side or the other
+                                xy(w, KicadPos { x, y })
+                            } else {
+                                // special case: handle diagonal inclusion, splitting the corner into three points
+                                //         x  x_inset
+                                //
+                                // y       +  +---- ...
+                                //            |
+                                // y_inset +--+
+                                //         |
+                                //         |
+                                //        ...
+                                let mut new_points = [
+                                    KicadPos { x, y: y_inset },
+                                    KicadPos {
+                                        x: x_inset,
+                                        y: y_inset,
+                                    },
+                                    KicadPos { x: x_inset, y },
+                                ];
+                                // handle different coordinate ordering for top right and bottom left
+                                if horiz_is_positive != vert_is_positive {
+                                    new_points.reverse();
+                                }
+                                for point in new_points {
+                                    xy(w, point)?;
+                                }
+                                Ok(())
+                            }
+                        }
                     }
-                    if vert == Some(PixelKind::Dark) {
-                        y = y_inset;
-                    }
-
-                    // normal cases: no diagonal inclusion, or already inset on one side or the other
-                    if x == x_inset || y == y_inset || diag != Some(PixelKind::Dark) {
-                        return xy(w, KicadPos { x, y });
-                    }
-
-                    // special case: handle diagonal inclusion, splitting the corner into three points
-                    //         x  x_inset
-                    //
-                    // y       +  +---- ...
-                    //            |
-                    // y_inset +--+
-                    //         |
-                    //         |
-                    //        ...
-                    let mut new_points = [
-                        KicadPos { x, y: y_inset },
-                        KicadPos {
-                            x: x_inset,
-                            y: y_inset,
-                        },
-                        KicadPos { x: x_inset, y },
-                    ];
-                    // handle different coordinate ordering for top right and bottom left
-                    if horiz_is_positive != vert_is_positive {
-                        new_points.reverse();
-                    }
-                    for point in new_points {
-                        xy(w, point)?;
-                    }
-                    Ok(())
                 };
             add_points_from(
                 left,
