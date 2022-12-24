@@ -1,12 +1,12 @@
 use crate::sizes::KicadDim;
-use clap::{Args, Parser};
+use clap::{Args, ArgAction, Parser};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[clap(version, about)]
 pub struct Arguments {
     /// Logging verbosity (-v info, -vv debug, -vvv trace)
-    #[clap(short = 'v', long = "verbose", parse(from_occurrences), global = true)]
+    #[clap(short = 'v', long = "verbose", action = ArgAction::Count, global = true)]
     pub verbose: u8,
 
     /// Input PNG file to be converted
