@@ -1,5 +1,11 @@
 use crate::generate;
-use crate::opt::Config;
+use crate::opt::{Arguments, Config};
+use clap::CommandFactory;
+
+#[test]
+fn verify_cli() {
+    Arguments::command().debug_assert();
+}
 
 fn run_against(name: &str, file: &[u8]) -> String {
     let image = image::load_from_memory(file).unwrap();

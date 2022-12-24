@@ -12,44 +12,41 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+    - uses: actions/checkout@v3
+    - run: rustup toolchain install stable --profile minimal
     - run: rustup component add rustfmt
+
     - run: cargo fmt --all -- --check
 
   clippy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+    - uses: actions/checkout@v3
+    - run: rustup toolchain install stable --profile minimal
     - run: rustup component add clippy
+
     - run: RUSTFLAGS="-D warnings" cargo clippy
 
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+    - uses: actions/checkout@v3
+    - run: rustup toolchain install stable --profile minimal
+
     - run: cargo test
 
   build-linux:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: x86_64-unknown-linux-musl
+    - uses: actions/checkout@v3
+    - run: rustup toolchain install stable --profile minimal
+    - run: rustup target add x86_64-unknown-linux-musl
     - run: sudo apt-get install musl-tools
+
     - run: cargo build --release --target=x86_64-unknown-linux-musl
     - run: strip target/x86_64-unknown-linux-musl/release/silkgen
     - run: ls -lh target/x86_64-unknown-linux-musl/release/silkgen
+
     - uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
@@ -60,17 +57,30 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
+    - uses: actions/checkout@v3
+    - run: rustup toolchain install stable --profile minimal
+
     - run: cargo build --release
       env:
         RUSTFLAGS: -Ctarget-feature=+crt-static
     - run: dir target/release/silkgen.exe
+
     - uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: target/release/silkgen.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-crate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - run: rustup toolchain install stable --profile minimal
+
+    - run: cargo package
+
+    - run: cargo publish --token $CARGO_REGISTRY_TOKEN
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

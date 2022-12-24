@@ -1,13 +1,19 @@
 [package]
 name = "silkgen"
-version = "0.3.1"
+version = "0.3.3"
+authors = ["Erik Desjardins <erikdesjardins@users.noreply.github.com>"]
 description = "Generate KiCad silkscreen art from PNGs."
+repository = "https://github.com/erikdesjardins/silkgen"
+documentation = "https://docs.rs/silkgen"
+license = "MIT"
+keywords = ["kicad", "silkscreen", "art", "image", "png"]
+categories = ["command-line-utilities", "graphics"]
 edition = "2021"
 
 [dependencies]
-clap = { version = "3", features = ["derive"] }
+clap = { version = "4", features = ["derive"] }
 derive_more = "0.99"
-env_logger = { version = "0.9", default-features = false, features = ["humantime"] }
+env_logger = { version = "0.10", default-features = false, features = ["humantime"] }
 fixed = { version = "1", features = ["std"] }
 fixed-macro = "1"
 image = { version = "0.24", default-features = false, features = ["png"] }
