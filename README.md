@@ -6,6 +6,12 @@ Primarily intended for pixel art. Turns black/white/transparent pixels into copp
 
 Adds clearance between silkscreen and copper to avoid DRC violations.
 
+## Install
+
+From crates.io: `cargo install silkgen`
+
+From GitHub releases: https://github.com/erikdesjardins/silkgen/releases
+
 ## Example
 
 `silkgen --pixel-pitch 0.5mm --clearance 0.05mm annoying_dog.png -o annoying_dog.kicad_mod`
