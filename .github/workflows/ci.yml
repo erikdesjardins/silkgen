@@ -72,7 +72,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  build-cargo:
+  build-crate:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
