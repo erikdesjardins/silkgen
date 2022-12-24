@@ -1,5 +1,5 @@
 use crate::sizes::KicadDim;
-use clap::{Args, ArgAction, Parser};
+use clap::{ArgAction, Args, Parser};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
