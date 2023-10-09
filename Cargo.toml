@@ -1,6 +1,6 @@
 [package]
 name = "silkgen"
-version = "0.3.3"
+version = "0.4.0"
 authors = ["Erik Desjardins <erikdesjardins@users.noreply.github.com>"]
 description = "Generate KiCad silkscreen art from PNGs."
 repository = "https://github.com/erikdesjardins/silkgen"
