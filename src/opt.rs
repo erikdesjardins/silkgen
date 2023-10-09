@@ -31,4 +31,8 @@ pub struct Config {
     /// This must be nonzero to avoid DRC violations.
     #[clap(short = 'c', long = "clearance")]
     pub clearance: KicadDim,
+
+    /// Invert the image, treating dark pixels as silkscreen and light pixels as copper
+    #[clap(long = "invert")]
+    pub invert: bool,
 }

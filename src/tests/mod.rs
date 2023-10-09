@@ -7,12 +7,13 @@ fn verify_cli() {
     Arguments::command().debug_assert();
 }
 
-fn run_against(name: &str, file: &[u8]) -> String {
+fn run_against(name: &str, file: &[u8], invert: bool) -> String {
     let image = image::load_from_memory(file).unwrap();
 
     let config = Config {
         pixel_pitch: "1mm".parse().unwrap(),
         clearance: "0.1mm".parse().unwrap(),
+        invert,
     };
 
     let mut out = Vec::new();
@@ -28,7 +29,11 @@ macro_rules! test {
     ($name:ident, $file:literal) => {
         #[test]
         fn $name() {
-            insta::assert_snapshot!(run_against(stringify!($name), include_bytes!($file)));
+            insta::assert_snapshot!(run_against(stringify!($name), include_bytes!($file), false));
+            insta::assert_snapshot!(
+                concat!(stringify!($name), "-invert"),
+                run_against(stringify!($name), include_bytes!($file), true)
+            );
         }
     };
 }

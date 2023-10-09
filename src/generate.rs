@@ -21,7 +21,7 @@ pub fn output_file(
         ChaCha12Rng::from_seed(hasher.finalize().try_into().unwrap())
     };
 
-    let extents = Extents::from_image(&image);
+    let extents = Extents::from_image(&image, config);
 
     sexpr(&mut w, "footprint", |w| {
         w.write_all(b"\"")?;
@@ -61,7 +61,7 @@ pub fn output_file(
                 x: PixelDim(x),
                 y: PixelDim(y),
             };
-            let kind = match PixelKind::from_pixel(pixel) {
+            let kind = match PixelKind::from_pixel(pixel, config) {
                 Some(k) => k,
                 None => continue,
             };
@@ -69,7 +69,7 @@ pub fn output_file(
                 PixelKind::Light => &["F.SilkS"],
                 PixelKind::Dark => &["F.Cu", "F.Mask"],
             };
-            let nearby = Nearby::from_pos(&image, pos);
+            let nearby = Nearby::from_pos(&image, pos, config);
             for layer in layers {
                 sexpr(w, "fp_poly", |w| {
                     sexpr(w, "pts", |w| {
