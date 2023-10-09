@@ -9,13 +9,18 @@ pub enum PixelKind {
 }
 
 impl PixelKind {
-    pub fn from_pixel(pixel: impl Pixel<Subpixel = u8>) -> Option<Self> {
+    pub fn from_pixel(pixel: impl Pixel<Subpixel = u8>, config: &Config) -> Option<Self> {
         let LumaA([luma, alpha]) = pixel.to_luma_alpha();
 
-        match () {
-            _ if alpha < u8::MAX / 2 => None,
-            _ if luma > u8::MAX / 2 => Some(Self::Light),
-            _ => Some(Self::Dark),
+        let is_light = match () {
+            _ if alpha < u8::MAX / 2 => return None,
+            _ if luma > u8::MAX / 2 => true,
+            _ => false,
+        };
+
+        match is_light ^ config.invert {
+            true => Some(Self::Light),
+            false => Some(Self::Dark),
         }
     }
 }
@@ -27,14 +32,17 @@ pub struct Extents {
 }
 
 impl Extents {
-    pub fn from_image(image: &impl GenericImageView<Pixel = impl Pixel<Subpixel = u8>>) -> Self {
+    pub fn from_image(
+        image: &impl GenericImageView<Pixel = impl Pixel<Subpixel = u8>>,
+        config: &Config,
+    ) -> Self {
         let mut min_x = u32::MAX;
         let mut max_x = 0;
         let mut min_y = u32::MAX;
         let mut max_y = 0;
 
         for (x, y, pixel) in image.pixels() {
-            if PixelKind::from_pixel(pixel).is_some() {
+            if PixelKind::from_pixel(pixel, config).is_some() {
                 min_x = min_x.min(x);
                 max_x = max_x.max(x);
                 min_y = min_y.min(y);
@@ -83,12 +91,13 @@ impl Nearby {
             x: PixelDim(x),
             y: PixelDim(y),
         }: PixelPos,
+        config: &Config,
     ) -> Self {
         let try_get = |x, y| {
             let x = x?;
             let y = y?;
             if image.in_bounds(x, y) {
-                PixelKind::from_pixel(image.get_pixel(x, y))
+                PixelKind::from_pixel(image.get_pixel(x, y), config)
             } else {
                 None
             }
